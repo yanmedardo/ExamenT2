@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using CalidadT2.Models;
+using CalidadT2.Repository;
+using CalidadT2.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,21 +10,23 @@ namespace CalidadT2.Controllers
 {
     public class LibroController : Controller
     {
-        private readonly AppBibliotecaContext app;
+        private readonly IUsuarioRepository userRepository;
+        private readonly IComentarioRepository comentaryRepository;
+        private readonly ILibroRepository bookRepository;
+        private readonly ICookieAuthService cookie;
 
-        public LibroController(AppBibliotecaContext app)
+        public LibroController(IUsuarioRepository user, IComentarioRepository comentario, ILibroRepository book, ICookieAuthService cookie)
         {
-            this.app = app;
+            this.bookRepository = book;
+            this.cookie = cookie;
+            this.userRepository = user;
+            this.comentaryRepository = comentario;
         }
 
         [HttpGet]
         public IActionResult Details(int id)
         {
-            var model = app.Libros
-                .Include("Autor")
-                .Include("Comentarios.Usuario")
-                .Where(o => o.Id == id)
-                .FirstOrDefault();
+            var model = bookRepository.Detalle(id);
             return View(model);
         }
 
@@ -32,21 +36,16 @@ namespace CalidadT2.Controllers
             Usuario user = LoggedUser();
             comentario.UsuarioId = user.Id;
             comentario.Fecha = DateTime.Now;
-            app.Comentarios.Add(comentario);
-
-            var libro = app.Libros.Where(o => o.Id == comentario.LibroId).FirstOrDefault();
-            libro.Puntaje = (libro.Puntaje + comentario.Puntaje) / 2;
-
-            app.SaveChanges();
-
+            comentaryRepository.Guardar(comentario);
+            bookRepository.ActualizarPuntaje(comentario);
             return RedirectToAction("Details", new { id = comentario.LibroId });
         }
 
         private Usuario LoggedUser()
         {
-            var claim = HttpContext.User.Claims.FirstOrDefault();
-            var user = app.Usuarios.Where(o => o.Username == claim.Value).FirstOrDefault();
-            return user;
+            cookie.SetHttpContext(HttpContext);
+            var claim = cookie.GetClaim();
+            return userRepository.UserLogued(claim);
         }
     }
 }

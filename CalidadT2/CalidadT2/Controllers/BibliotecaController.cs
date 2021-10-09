@@ -4,33 +4,32 @@ using System.Linq;
 using System.Threading.Tasks;
 using CalidadT2.Constantes;
 using CalidadT2.Models;
+using CalidadT2.Repository;
+using CalidadT2.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CalidadT2.Controllers
 {
     [Authorize]
     public class BibliotecaController : Controller
     {
-        private readonly AppBibliotecaContext app;
+        private readonly IUsuarioRepository userRepository;
+        private readonly ICookieAuthService cookie;
+        private readonly IBibliotecaRepository libraryRepository;
 
-        public BibliotecaController(AppBibliotecaContext app)
+        public BibliotecaController(IBibliotecaRepository library, IUsuarioRepository user, ICookieAuthService cookie)
         {
-            this.app = app;
+            this.cookie = cookie;
+            this.userRepository = user;
+            this.libraryRepository = library;
         }
 
         [HttpGet]
         public IActionResult Index()
         {
             Usuario user = LoggedUser();
-
-            var model = app.Bibliotecas
-                .Include(o => o.Libro.Autor)
-                .Include(o => o.Usuario)
-                .Where(o => o.UsuarioId == user.Id)
-                .ToList();
-
+            var model = libraryRepository.Listar(user);
             return View(model);
         }
 
@@ -45,11 +44,9 @@ namespace CalidadT2.Controllers
                 UsuarioId = user.Id,
                 Estado = ESTADO.POR_LEER
             };
+            libraryRepository.Guardar(biblioteca);
 
-            app.Bibliotecas.Add(biblioteca);
-            app.SaveChanges();
-
-            TempData["SuccessMessage"] = "Se añádio el libro a su biblioteca";
+            //TempData["SuccessMessage"] = "Se añádio el libro a su biblioteca";
 
             return RedirectToAction("Index", "Home");
         }
@@ -59,14 +56,10 @@ namespace CalidadT2.Controllers
         {
             Usuario user = LoggedUser();
 
-            var libro = app.Bibliotecas
-                .Where(o => o.LibroId == libroId && o.UsuarioId == user.Id)
-                .FirstOrDefault();
+            var libro = libraryRepository.Detalle(user, libroId);
+            libraryRepository.CambiarEstado(libro, ESTADO.LEYENDO);
 
-            libro.Estado = ESTADO.LEYENDO;
-            app.SaveChanges();
-
-            TempData["SuccessMessage"] = "Se marco como leyendo el libro";
+            // TempData["SuccessMessage"] = "Se marco como leyendo el libro";
 
             return RedirectToAction("Index");
         }
@@ -76,23 +69,19 @@ namespace CalidadT2.Controllers
         {
             Usuario user = LoggedUser();
 
-            var libro = app.Bibliotecas
-                .Where(o => o.LibroId == libroId && o.UsuarioId == user.Id)
-                .FirstOrDefault();
+            var libro = libraryRepository.Detalle(user, libroId);
+            libraryRepository.CambiarEstado(libro, ESTADO.TERMINADO);
 
-            libro.Estado = ESTADO.TERMINADO;
-            app.SaveChanges();
-
-            TempData["SuccessMessage"] = "Se marco como leyendo el libro";
+            //TempData["SuccessMessage"] = "Se marco como leyendo el libro";
 
             return RedirectToAction("Index");
         }
 
-        private Usuario LoggedUser()
+        public Usuario LoggedUser()
         {
-            var claim = HttpContext.User.Claims.FirstOrDefault();
-            var user = app.Usuarios.Where(o => o.Username == claim.Value).FirstOrDefault();
-            return user;
+            cookie.SetHttpContext(HttpContext);
+            var claim = cookie.GetClaim();
+            return userRepository.UserLogued(claim);
         }
     }
 }

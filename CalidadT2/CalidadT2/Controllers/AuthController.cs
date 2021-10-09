@@ -4,19 +4,23 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using CalidadT2.Models;
+using CalidadT2.Repository;
+using CalidadT2.Service;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CalidadT2.Controllers
+namespace CalidadT2Tests.Controllers
 {
     public class AuthController : Controller
     {
-        private readonly AppBibliotecaContext app;
+        private readonly IUsuarioRepository user;
+        private readonly ICookieAuthService cookie;
 
-        public AuthController(AppBibliotecaContext app)
+        public AuthController(IUsuarioRepository user, ICookieAuthService cookie)
         {
-            this.app = app;
+            this.user = user;
+            this.cookie = cookie;
         }
 
         [HttpGet]
@@ -28,7 +32,7 @@ namespace CalidadT2.Controllers
         [HttpPost]
         public IActionResult Login(string username, string password)
         {
-            var usuario = app.Usuarios.Where(o => o.Username == username && o.Password == password).FirstOrDefault();
+            var usuario = user.FindUser(username, password);
             if (usuario != null)
             {
                 var claims = new List<Claim> {
@@ -38,12 +42,12 @@ namespace CalidadT2.Controllers
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
+                cookie.SetHttpContext(HttpContext);
+                cookie.Login(claimsPrincipal);
 
-                HttpContext.SignInAsync(claimsPrincipal);
-                
                 return RedirectToAction("Index", "Home");
             }
-            
+
             ViewBag.Validation = "Usuario y/o contraseña incorrecta";
             return View();
         }
