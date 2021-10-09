@@ -4,24 +4,24 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using CalidadT2.Models;
-using CalidadT2.Repository;
+using Microsoft.EntityFrameworkCore;
 
 namespace CalidadT2.Controllers
 {
     public class HomeController : Controller
     {
-        private ILibroRepository libroRepository;
-
-        public HomeController(ILibroRepository libro)
+        private AppBibliotecaContext app;
+        public HomeController(AppBibliotecaContext app)
         {
-            libroRepository = libro;
+            this.app = app;
         }
 
         [HttpGet]
         public IActionResult Index()
-        {
-            var model = libroRepository.Listar();
+        {            
+            var model = app.Libros.Include(o => o.Autor).ToList();
             return View(model);
         }
     }

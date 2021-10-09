@@ -2,7 +2,6 @@
 using System.Linq;
 using CalidadT2.Models;
 using CalidadT2.Repository;
-using CalidadT2.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,23 +9,23 @@ namespace CalidadT2.Controllers
 {
     public class LibroController : Controller
     {
-        private readonly IUsuarioRepository userRepository;
-        private readonly IComentarioRepository comentaryRepository;
-        private readonly ILibroRepository bookRepository;
-        private readonly ICookieAuthService cookie;
+        private readonly AppBibliotecaContext app;
+        private ILibroRepository libroRepository;
+        private IComentarioRepository comentarioRepository;
+        private IAuthRepository authRepository;
 
-        public LibroController(IUsuarioRepository user, IComentarioRepository comentario, ILibroRepository book, ICookieAuthService cookie)
+        public LibroController(AppBibliotecaContext app, IAuthRepository authRepository, ILibroRepository libroRepository, IComentarioRepository comentarioRepository)
         {
-            this.bookRepository = book;
-            this.cookie = cookie;
-            this.userRepository = user;
-            this.comentaryRepository = comentario;
+            this.app = app;
+            this.libroRepository = libroRepository;
+            this.comentarioRepository = comentarioRepository;
+            this.authRepository = authRepository;
         }
 
         [HttpGet]
         public IActionResult Details(int id)
         {
-            var model = bookRepository.Detalle(id);
+            var model = this.libroRepository.Buscar(id);
             return View(model);
         }
 
@@ -36,16 +35,19 @@ namespace CalidadT2.Controllers
             Usuario user = LoggedUser();
             comentario.UsuarioId = user.Id;
             comentario.Fecha = DateTime.Now;
-            comentaryRepository.Guardar(comentario);
-            bookRepository.ActualizarPuntaje(comentario);
+            comentarioRepository.AddComentario(comentario);
+
+            var libro = libroRepository.Buscar(comentario.LibroId);
+            libroRepository.ActualizarPuntaje(libro, comentario);
+
             return RedirectToAction("Details", new { id = comentario.LibroId });
         }
 
         private Usuario LoggedUser()
         {
-            cookie.SetHttpContext(HttpContext);
-            var claim = cookie.GetClaim();
-            return userRepository.UserLogued(claim);
+            var claim = HttpContext.User.Claims.FirstOrDefault();
+            var user = authRepository.GetUserLogged(claim);
+            return user;
         }
     }
 }

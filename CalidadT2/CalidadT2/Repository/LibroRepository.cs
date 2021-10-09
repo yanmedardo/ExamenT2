@@ -7,12 +7,10 @@ using System.Threading.Tasks;
 
 namespace CalidadT2.Repository
 {
-
     public interface ILibroRepository
     {
-        public List<Libro> Listar();
-        public Libro Detalle(int id);
-        public void ActualizarPuntaje(Comentario comentario);
+        public Libro Buscar(int Id);
+        public Libro ActualizarPuntaje(Libro libro, Comentario comentario);
     }
 
     public class LibroRepository : ILibroRepository
@@ -24,24 +22,21 @@ namespace CalidadT2.Repository
             this.context = context;
         }
 
-        public List<Libro> Listar()
+        public Libro Buscar(int Id)
         {
-            return context.Libros.Include(o => o.Autor).ToList();
-        }
-
-        public Libro Detalle(int id)
-        {
-            return context.Libros.Include("Autor")
+            var model = context.Libros
+                .Include("Autor")
                 .Include("Comentarios.Usuario")
-                .Where(o => o.Id == id)
+                .Where(o => o.Id == Id)
                 .FirstOrDefault();
+            return model;
         }
 
-        public void ActualizarPuntaje(Comentario comentario)
+        public Libro ActualizarPuntaje(Libro libro, Comentario comentario)
         {
-            var libro = Detalle(comentario.LibroId);
             libro.Puntaje = (libro.Puntaje + comentario.Puntaje) / 2;
             context.SaveChanges();
+            return libro;
         }
     }
 }

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CalidadT2.Models;
 using CalidadT2.Repository;
-using CalidadT2.Service;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -41,11 +40,15 @@ namespace CalidadT2
                 });
 
             services.AddHttpContextAccessor();
-            services.AddTransient<ICookieAuthService, CookieAuthService>();
-            services.AddTransient<IBibliotecaRepository, BibliotecaRepository>();
-            services.AddTransient<IComentarioRepository, ComentarioRepository>();
-            services.AddTransient<ILibroRepository, LibroRepository>();
             services.AddTransient<IUsuarioRepository, UsuarioRepository>();
+            services.AddTransient<IUsuarioRepository, UsuarioRepository>();
+            services.AddTransient<IBibliotecaRepository, BibliotecaRepository>();
+            services.AddTransient<ILibroRepository, LibroRepository>();
+            services.AddTransient<IComentarioRepository, ComentarioRepository>();
+            services.AddTransient<IAuthRepository, AuthRepository>();
+
+
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -65,7 +68,6 @@ namespace CalidadT2
             app.UseStaticFiles();
 
             app.UseRouting();
-
             app.UseAuthentication();
             app.UseAuthorization();
 
